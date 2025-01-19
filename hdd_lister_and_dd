@@ -1,0 +1,64 @@
+#!/bin/bash
+os_drive=$(df / | tail -1 | awk '{print $1}')	
+# Loop through the array and print each drive
+
+while true; do
+
+	fdisk -l
+	sleep 1.3
+	echo "Drives: " $(fdisk -l | grep -c 'Disk /dev/sd' | tail -1)
+	
+
+	disk_list=($(fdisk -l | grep -o 'Disk /dev/sd[a-z]'))
+
+	# Initialize variables
+	disks_with_partitions=()
+	disks_without_partitions=()
+
+	# Loop through each disk and check for partitions
+	for disk in "${disk_list[@]}"; do
+		# Check if the disk has partitions by using lsblk or fdisk output
+    partitions=$(fdisk -l "${disk##Disk }" 2>/dev/null | grep "^${disk##Disk }[1-9]")
+    
+    
+    
+        if [[ -n "$partitions" ]]; then
+           disks_with_partitions+=("${disk##Disk }")
+           
+        else
+           disks_without_partitions+=("${disk##Disk }")           
+        fi
+        
+    done
+
+	#=====================================================================
+
+	for disk in "${disks_with_partitions[@]}"; do
+			
+			disk=$(echo "$disk" | grep "dev/sd")
+		if [ -e "$disk" ]; then
+
+			echo "testing $device"
+				
+			if [[ "$os_drive" == "$disk"* ]]; then
+				echo "$disk is root. Cancelling - not going to erase the root hard drive"
+				echo "..."
+			else
+			   echo "erasing $disk"	
+			   dd if=/dev/zero of=$disk bs=512 count=1000000
+			fi
+		 fi   
+			
+	done
+		
+	#=====================================================================	
+
+		# Display disks without partitions
+		#echo "Disks without partitions:"
+		for disk in "${disks_without_partitions[@]}"; do
+			
+			disk=$(echo "$disk" | grep "dev/sd")
+			echo "$disk"
+		done
+
+done

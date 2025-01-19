@@ -1,0 +1,133 @@
+#!/bin/bash
+
+# Initialize empty arrays for each result
+serial_result=()
+testing_result=()
+pass_completed_result=()
+power_on_hours_result=()
+uncorrectable_errors_result=()
+mechanical_start_failures_result=()
+reallocated_sectors_result=()
+write_result=()
+read_result=()
+tbw_result=()
+
+# Store each result from `grep` into its own array (line by line)
+
+# For "Serial"
+while IFS= read -r line; do
+    serial_result+=("$line")
+done < <(grep "Serial" test_result_sd*)
+
+# For "testing"
+#while IFS= read -r line; do
+#    testing_result+=("$line")
+#done < <(grep "testing" test_result_sd*)
+
+# For "Pass completed"
+while IFS= read -r line; do
+    pass_completed_result+=("$line")
+done < <(grep "Pass completed" test_result_sd*)
+
+# For "Power on Hours"
+while IFS= read -r line; do
+    power_on_hours_result+=("$line")
+done < <(grep "Power on Hours" test_result_sd*)
+
+# For "Uncorrectable Errors"
+while IFS= read -r line; do
+    uncorrectable_errors_result+=("$line")
+done < <(grep "Uncorrectable Errors" test_result_sd*)
+
+# For "Mechanical Start Failures"
+while IFS= read -r line; do
+    mechanical_start_failures_result+=("$line")
+done < <(grep "Mechanical Start Failures" test_result_sd*)
+
+# For "Reallocated Sectors"
+while IFS= read -r line; do
+    reallocated_sectors_result+=("$line")
+done < <(grep "Reallocated Sectors" test_result_sd*)
+
+# For "read:"
+while IFS= read -r line; do
+    read_result+=("$line")
+done < <(grep "READ:" test_result_sd*)
+
+# For "WRITE:"
+while IFS= read -r line; do
+    write_result+=("$line")
+done < <(grep "WRITE:" test_result_sd*)
+
+# For "TBW:"
+while IFS= read -r line; do
+    tbw_result+=("$line")
+done < <(grep "TBW:" test_result_sd*)
+
+# Store all results into an array of arrays for easy looping
+results=(
+    ["Serial"]="${serial_result[@]}"
+    #["Testing"]="${testing_result[@]}"
+    ["Pass Completed"]="${pass_completed_result[@]}"
+    ["Power on Hours"]="${power_on_hours_result[@]}"
+    ["Uncorrectable Errors"]="${uncorrectable_errors_result[@]}"
+    ["Mechanical Start Failures"]="${mechanical_start_failures_result[@]}"
+    ["Reallocated Sectors"]="${reallocated_sectors_result[@]}"
+    ["WRITE"]="${write_result[@]}"
+)
+
+# Output the results using a single loop
+echo "===== Test Results ====="
+echo "Generated on: $(date)"
+echo "======================="
+
+# Loop through all results
+for category in "${!results[@]}"; do
+    echo -e "\n$category Results:"
+    
+    # Get the result array for the current category
+    result_array=(${results["$category"]})
+    
+    # Loop through each line in the result array and echo it
+    for i in "${!serial_result[@]}"; do
+    
+    
+        filename="${serial_result[$i]}"
+        filename="${filename//test_result_/}"; filename="${filename//.txt/}";echo "$filename"
+
+#filename="${testing_result[$i]}"
+#filename="${filename//test_result_/}"; filename="${filename//.txt/}";echo "$filename"
+
+filename="${pass_completed_result[$i]}"
+filename="${filename//test_result_/}"; filename="${filename//.txt/}";echo "$filename"
+
+filename="${power_on_hours_result[$i]}"
+filename="${filename//test_result_/}"; filename="${filename//.txt/}";echo "$filename"
+
+filename="${uncorrectable_errors_result[$i]}"
+filename="${filename//test_result_/}"; filename="${filename//.txt/}";echo "$filename"
+
+filename="${mechanical_start_failures_result[$i]}"
+filename="${filename//test_result_/}"; filename="${filename//.txt/}";echo "$filename"
+
+filename="${reallocated_sectors_result[$i]}"
+filename="${filename//test_result_/}"; filename="${filename//.txt/}";echo "$filename"
+
+filename="${read_result[$i]}"
+filename="${filename//test_result_/}"; filename="${filename//.txt/}";echo "$filename"
+
+filename="${write_result[$i]}"
+filename="${filename//test_result_/}"; filename="${filename//.txt/}";echo "$filename"
+
+#filename="${tbw_result[$i]}"
+#filename="${filename//test_result_/}"; filename="${filename//.txt/}";echo "$filename"
+
+echo ""
+echo "========================================================================"
+echo ""
+
+    done
+done
+
+echo "===== End of Report ====="
+

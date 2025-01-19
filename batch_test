@@ -1,0 +1,160 @@
+#!/bin/bash
+
+drives_to_test=4
+
+
+# Check if $1 is empty
+if [ -z "$1" ]; then
+  echo "..."
+else
+  # Remove all non-numeric characters from $1
+  cleaned_input=$(echo "$1" | tr -cd '0-9')
+
+  # Check if cleaned_input is a number and greater than 0
+  if [[ "$cleaned_input" =~ ^[0-9]+$ ]] && [ "$cleaned_input" -gt 0 ]; then
+    drives_to_test=$cleaned_input
+    echo "drives_to_test reset to: $cleaned_input"
+  else
+    echo "$cleaned_input is bad input"
+  fi
+fi
+
+
+# Get the current date in dd-mm-yyyy format
+current_date=$(date +"%m-%d-%Y")
+
+# Check if a folder with that name exists
+if [ -d "$current_date" ]; then
+    # Folder exists, append the current time (HHMMSS) to the folder name
+    current_time=$(date +"%m-%d-%Y_%H%M%S")
+    folder_name="${current_date}_${current_time}"
+else
+    # Folder does not exist, use the date as the folder name
+    folder_name="$current_date"
+fi
+
+# Create the folder
+mkdir "$folder_name"
+
+# Change into the newly created folder
+cd "$folder_name" 
+
+os_drive=$(df / | tail -1 | awk '{print $1}')
+
+script="hdd_test"
+
+# Create an array of drives from b to z
+drives=($(echo {a..z}))
+running_pids=()
+active_drives=()
+
+# Function to check how many processes are currently running
+check_running_processes() {
+    running_count=0
+    for pid in ${running_pids[@]}; do
+        # Check if the process with the given PID is still running
+		if ps -p $pid > /dev/null 2>&1; then
+
+			running_count=$((running_count + 1))
+		fi
+
+    done
+    echo $running_count
+}
+
+#===================================================================================
+
+
+
+check_active_drives() {
+    running_count=0
+    for drv in ${active_drives[@]}; do
+        # Check if the process with the given PID is still running
+		if [[ $(cat test_result_$drv.txt | grep "This test has completed:" | awk '{print $5}') != "YES" ]]; then
+
+			running_count=$((running_count + 1))
+		fi
+
+    done
+    echo $running_count
+}
+
+
+
+#===================================================================================
+
+echo_running_processes() {
+   
+    for pid in ${running_pids[@]}; do
+      
+      	if ps -p $pid > /dev/null 2>&1; then
+
+			echo $pid
+			
+		fi
+
+    done
+}
+
+i=0
+# Loop through the array and print each drive
+for drive in "${drives[@]}"; do
+	
+	#test if /dev/sdX exists
+	device="/dev/sd$drive"
+	if [ -e "$device" ]; then
+		
+		dv="sd$drive"
+		echo "testing $device"
+		
+		#launch the script in lxterminal and background it
+	if [[ "$os_drive" != "$device"* ]]; then
+		
+			lxterminal --command="/bin/bash -c 'echo \"started testing $dv ... wait for a while. Check test_result_$dv.txt for current status. \"; $script $drive  > test_result_$dv.txt 2>&1'" &
+			active_drives+=( $dv )
+			#lxterminal --command="/bin/bash -c '$script $drive; echo \"press enter to close\";  read'" &
+			#echo "not os drive $device"
+			# wait 2 seconds in between each launch
+			sleep 2
+
+			#this grabs the id of the lxterminal process
+			#LXTERM_PID=$!
+			#echo "LXTerminal pid = $LXTERM_PID"
+			
+			# this grabs the process of the script i am running
+			bb=$(pgrep -f "$script $drive"  | head -n1)
+			running_pids+=( $bb )			
+			trap 'echo "Terminal closed. Killing background process."; kill -9 $bb' SIGHUP
+			else 
+			echo "os drive: $device - Skipping"
+		fi
+	fi	
+
+    # Wait for at least one process to finish if there are already 4 running
+    while [[ $(check_running_processes) -ge drives_to_test && $(check_active_drives) -ge drives_to_test ]]; do
+       #check only every 2 seconds
+       sleep 2
+       echo "Running processes " $(check_running_processes)
+       echo "Running drives " $(check_active_drives)
+       echo_running_processes
+       #echo $running_pids
+    done
+
+done
+
+echo $(check_running_processes) " drives still being checked"
+
+#main loop is finished, but there may still be other processes lingering
+    while [[ $(check_running_processes) -gt 0 && $(check_active_drives) -gt 0 ]]; do
+       #check only every 2 seconds
+       sleep 2
+       echo "Running processes " $(check_running_processes)
+       echo "Running drives " $(check_active_drives)
+       echo_running_processes
+       #echo $running_pids
+    done
+
+
+
+
+echo "done"

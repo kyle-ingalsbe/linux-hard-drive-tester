@@ -1,0 +1,170 @@
+#!/bin/bash
+
+#catch the various error closes, like when you ctrl+c or close the terminal. and when you catch it, echo the finished line and then try to kill the pid
+current_pid=$BASHPID
+
+trap 'echo "This test has completed: YES"; kill -9 $current_pid; exit' SIGINT SIGTERM SIGHUP
+
+#smartctl -a /dev/sdb | grep 'Power_On_Hours' | awk '{print $10}'
+#smartctl -a /dev/sdb | grep 'Reallocated_Sector_Ct' | awk '{print $10}'
+#smartctl -a /dev/sdb | grep 'Model Family:' | awk '{print $10}'
+#smartctl -a /dev/sdb | grep 'Device Model:' | awk '{print $10}'
+#smartctl -a /dev/sdb | grep 'Serial Number:' | awk '{print $10}'
+
+	# dont erase the main hard drive
+	device="/dev/sd$1"
+	os_drive=$(df / | tail -1 | awk '{print $1}')	
+	tmp_dir="tmp$1"
+
+
+	echo "$tmp_dir"
+if [ -e "$device" ]; then
+
+	echo "testing $device"
+		
+	if [[ "$os_drive" == "$device"* ]]; then
+		echo "$device is root. Cancelling - not going to erase the root hard drive"
+		exit 1
+	fi
+
+else
+
+		echo "no such device $device"
+		exit 1
+fi
+	
+clear
+#enable smart
+smartctl -s on $device > /dev/null 2>&1
+
+
+echo "$device"
+
+
+			#test to see if the drive is an ssd or hdd. if it is a ssd then run the ssd info	
+			model=$(smartctl -i "$device" | grep "Model" | awk -F: '{print $2}' | xargs)
+			
+			# Check if the device is SSD or HDD
+			drive_type=$(cat /sys/block/$(basename "$device")/queue/rotational)
+
+			if [ "$drive_type" -eq 1 ]; then
+				echo "HDD..."
+			elif [ "$drive_type" -eq 0 ]; then
+				ssd_info $device
+			else
+				echo "$model - $device is an unknown type"
+			fi
+echo ""
+echo "================================================================="
+echo "               Surface area scan for $device"
+echo "================================================================="
+echo ""
+
+#do badblocks first - 0xff goest faster than 0xffff
+badblocks -svwf -b 8192 $device -t 0xff 
+
+sleep 3
+
+mkdir $tmp_dir > /dev/null 2>&1
+cd $tmp_dir
+
+echo ""
+echo "================================================================="
+echo "                   Smart info for $device"
+echo "================================================================="
+echo ""
+
+
+#store the temp file
+smartctl -x $device > smt_temp.txt
+
+
+echo  $(cat smt_temp.txt | grep 'Model Family:')
+echo  $(cat smt_temp.txt | grep 'Serial Number:')
+echo  $(cat smt_temp.txt | grep 'Device Model:' )
+echo "" 
+echo "======="
+echo ""
+echo  "Reallocated Sectors: " $(cat smt_temp.txt | grep 'Reallocated_Sector_Ct' | awk '{print $8}' )
+echo  "Power on Hours: " $(cat smt_temp.txt | grep 'Power_On_Hours' | awk '{print $8}' )
+echo  "Uncorrectable Errors: " $(cat smt_temp.txt | grep 'Number of Reported Uncorrectable Errors' | awk '{print $4}' )
+echo  "Mechanical Start Failures: " $(cat smt_temp.txt | grep 'Number of Mechanical Start Failures' | awk '{print $4}' )
+echo ""
+rm smt_temp.txt
+
+cd  ..
+
+#run a short test
+smartctl -t short $device
+sleep 700
+#show self test
+smartctl -l selftest $device
+
+
+new_device="$device"1
+echo "new device $new_device"
+#hard drive speed test
+echo ""
+echo "================================================================="
+echo "          Testing drive speed at end of drive $device"
+echo "================================================================="
+echo ""
+
+
+#echo "loc 1"
+parted -s $device mklabel gpt > /dev/null 2>&1
+
+sleep 2
+#echo "loc 2"
+parted -s -a opt $device -- mkpart primary ext4 80% 100% > /dev/null 2>&1
+
+sleep 2
+#echo "loc 3"
+mkfs.ext4 $new_device > /dev/null 2>&1
+
+sleep 2
+#echo "loc 4"
+mkdir $tmp_dir > /dev/null 2>&1
+
+sleep 2
+#echo "loc 5"
+
+
+mount $new_device $tmp_dir
+echo  "mount $new_device $tmp_dir"
+
+sleep 2
+#echo "loc 6"
+if [ -e "$new_device" ]; then
+
+	#echo "loc 7"
+	cd $tmp_dir
+	#do a write test first
+	fio --name TEST --eta-newline=5s --filename=fio-tempfile.dat --rw=write --size=5000m --io_size=10g --blocksize=1024k --ioengine=libaio --fsync=10000 --iodepth=32 --direct=1 --numjobs=1 --runtime=60 --group_reporting
+	#now do a read test
+	fio --name TEST --eta-newline=5s --filename=fio-tempfile.dat --rw=read --size=5000m --io_size=10g --blocksize=1024k --ioengine=libaio --fsync=10000 --iodepth=32 --direct=1 --numjobs=1 --runtime=60 --group_reporting
+	cd ..
+	#echo "loc 8"
+	umount $tmp_dir
+	rm $tmp_dir/ -r
+
+	#now wipe that partiton table by wiping out the first 2gb of data
+	dd if=/dev/zero of=$device bs=1M count=2048 seek=0
+else
+	
+	echo "$new_device does not exist"
+fi
+
+
+#this line is important for the batch tester, b/c it relies upon the " grep awk " of this line to determine if the drives have truly completed, b/c getting the processes doesnt always work, b/c the processed dont always tend to kill out.
+echo "This test has completed: YES"
+
+
+
+
+#this script, for some reason, does not want to exit upon completion
+
+echo "The current process ID is: $current_pid"
+
+kill -9 $current_pid
+exit 1
