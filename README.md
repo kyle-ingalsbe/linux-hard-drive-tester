@@ -17,13 +17,13 @@ These are the following scripts associated with this, along with a brief summary
 
 batch_test
 
-batch_test will loop through /dev/sda to /dev/sdz. It will check to see if the drive has the system root partition on it. If it does, then it will skip it, if it does not, then it will proceed to wipe, test, and get SMART info about the drive. Batch_test was designed to only test a certain amount of drives at a time, due to the limitations of the computer it was designed for. It defaults to 4 drives. But you can pass in a number upon start to change that. The script will keep scanning to see if the processes for the drives are still running or not. Once the process stops running, then it will try to start the next drive (if it exists). And it will loop until it reaches drive /dev/sdz.  While the drives are testing, you can add more drives to the system. As long as the device identifier (/dev/sd) for the new drive does not surpass /dev/sdz, then the script will start on that drive once it loops around to it. However, this only happens if it is in the main loop. Once it exits the main loop, it will enter the "wait loop" where it simply waits for all processes to end. And it will reach that wait loop once the number of <current testing drives> is less than <number of drives to test>.
+batch_test will loop through /dev/sda to /dev/sdz. It will check to see if the drive has the system root partition on it. If it does, then it will skip it, if it does not, then it will proceed to wipe, test, and get SMART info about the drive. Batch_test was designed to only test a certain amount of drives at a time, due to the limitations of the computer it was designed for. It defaults to 4 drives. But you can pass in a number upon start to change that. The script will keep scanning to see if the processes for the drives are still running or not. Once the process stops running, then it will try to start the next drive (if it exists). And it will loop until it reaches drive /dev/sdz.  While the drives are testing, you can add more drives to the system. As long as the device identifier (/dev/sd) for the new drive does not surpass /dev/sdz, then the script will start on that drive once it loops around to it. However, this only happens if it is in the main loop. Once it exits the main loop, it will enter the "wait loop" where it simply waits for all processes to end. And it will reach that wait loop once the number of [current testing drives] is less than [number of drives to test].
 
 batch_test only takes one argument:
 
-batch_test <number of drives to test>
+batch_test [number of drives to test]
 
-<number of drives to test> defaults to 4. If you test SSDs, then be aware that you can flood your bandwidth and cause things to go a lot slower, so set this number to what your pcie or raid card can handle.
+[number of drives to test] defaults to 4. If you test SSDs, then be aware that you can flood your bandwidth and cause things to go a lot slower, so set this number to what your pcie or raid card can handle.
 
 You can use the default of 4 drives to test at a time by running batch_test with no arguments
 
@@ -37,7 +37,7 @@ hdd_test is a script that is used by batch_test. You can use this script by itse
 
 Syntax:
 
-hdd_test <drive letter>
+hdd_test [drive letter]
 
 Example: hdd_test b
 
@@ -53,7 +53,7 @@ This script will try to grab the smart data for an ssd. The TBW is calculated di
 
 Syntax:
 
-ssd_info <device path>
+ssd_info [device path]
 
 Example:
 
