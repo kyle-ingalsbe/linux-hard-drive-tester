@@ -1,2 +1,2 @@
 # linux-hard-drive-tester
-Bash Scripts to test multiple hard drives. 
+This is a set of scripts for testing hard drives.
